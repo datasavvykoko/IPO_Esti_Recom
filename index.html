@@ -20,6 +20,7 @@ p{margin:0 0 12px}
 .sentence{font-size:clamp(22px,4.6vw,30px);line-height:1.6;font-weight:500;letter-spacing:-.01em;margin:0 0 10px}
 .sentence input,.sentence select{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);padding:0 2px;border-radius:0;appearance:none;-webkit-appearance:none;cursor:pointer}
 .sentence input{width:7.2ch;text-align:left}
+.sentence input.hz{width:3.2ch}
 .sentence select{padding-right:1.1em;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);background-position:calc(100% - .55em) 55%,calc(100% - .3em) 55%;background-size:.25em .25em;background-repeat:no-repeat}
 .sentence input:focus,.sentence select:focus,button:focus-visible,input[type=range]:focus-visible,summary:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;vertical-align:middle;font-size:.62em;font-weight:600}
@@ -93,13 +94,14 @@ footer{margin-top:36px;font-size:13px;color:var(--muted);border-top:1px solid va
 <h1>Chris_V1 Dangote IPO Estimator_Reco</h1>
 
 <p class="sentence">
-If I invest <label class="sr" for="amt">Amount per investment, in naira</label>₦<input id="amt" inputmode="numeric" autocomplete="off" value="1,000,000">
+If I invest <label class="sr" for="amt">Amount per investment, in naira</label>₦<input id="amt" inputmode="numeric" autocomplete="off" value="500,000">
+at <label class="sr" for="entry">Price paid per share</label>₦<input id="entry" class="hz" inputmode="numeric" autocomplete="off" value="525"> a share,
 <label class="sr" for="freq">How often</label><select id="freq">
 <option value="once">once, at the IPO,</option>
 <option value="monthly">every month from the IPO</option>
 <option value="annual">every year from the IPO</option>
 </select>
-and sell after <label class="sr" for="hz">Holding period</label><input id="hz" class="hz" inputmode="numeric" autocomplete="off" value="3">
+and sell after <label class="sr" for="hz">Holding period</label><input id="hz" class="hz" inputmode="numeric" autocomplete="off" value="5">
 <label class="sr" for="unit">Unit of time</label><select id="unit"><option value="years">years</option><option value="months">months</option></select>,
 with refining margins on the
 <span class="seg" role="group" aria-label="Margin case">
@@ -144,7 +146,7 @@ case and a share price that tracks
 <div><dt>Expected outcome, odds-weighted</dt><dd id="rExp"></dd></div>
 <div><dt>Chance of getting back less than you put in</dt><dd id="rLoss"></dd></div>
 <div><dt>Margin needed to break even</dt><dd id="rBe"></dd></div>
-<div><dt>Margin needed to double it</dt><dd id="rBe2"></dd></div>
+<div><dt>Highest price worth paying</dt><dd id="rMax"></dd></div>
 </dl>
 <ul class="reco-why" id="rWhy"></ul>
 <div class="odds">
@@ -187,8 +189,9 @@ case and a share price that tracks
 <section class="explain">
 <h2>How the estimate works</h2>
 <p>The refinery is valued with the same US$ discounted cash flow model as the accompanying spreadsheet, built from the prospectus dated 7 September 2026. Each case sets the long-run refining margin, how much crude the refinery processes, and whether the 700,000 barrel a day expansion arrives on time.</p>
-<p>Your first investment buys at ₦525 in the IPO, in lots of 10 shares. Later monthly or yearly investments buy at the estimated market price that month, plus 1.5% dealing costs, and any small change waits for the next purchase. Dividends are paid out to you each year, not reinvested.</p>
+<p>Your first investment buys at the price you set, in lots of 10 shares at the ₦525 IPO price, or at any price with 1.5% dealing costs. Later monthly or yearly investments buy at the estimated market price that month, plus 1.5% dealing costs, and any small change waits for the next purchase. Dividends are paid out to you each year, not reinvested.</p>
 <p>The share price follows the basis you choose. Fundamental value is what the model says the shares are worth on that date, so if the market moves there, later buyers pay less than IPO buyers. A market multiple prices the company at the EV/EBITDA multiple you set, less its debt. Today's premium assumes buyers keep paying the same mark-up over fundamental value that ₦525 represents today.</p>
+<p>The price you pay is the biggest lever, so it is an input too. Leave it at ₦525 for the IPO, or type a lower number to test buying on the market after listing. The card also solves for the highest price at which the answer stops being hold off.</p>
 <p>The recommendation is a rule, not a judgement call. It weights the three cases by the odds you set, compares the odds-weighted return with the return you say you could get elsewhere, and then sizes the bet using a half-Kelly rule: the fraction of your money that maximises expected long-run growth, halved for caution. That fraction is turned into one of three answers. Above 45% it says invest it all, above 20% invest half, and below that hold off. If you are selling within two years the answer is capped at invest half. The two margin figures are measured on fundamental value, so they describe what the business must earn rather than what the market might pay. In the bear case the model floors equity value at zero, so that case is treated as a total loss.</p>
 <p>Return per year is money-weighted, so it accounts for when each naira went in and came out. Selling costs of 1.5% and 10% withholding tax on dividends are included. Month zero is listing, assumed December 2026.</p>
 </section>
@@ -209,7 +212,7 @@ const K = {
 };
 
 const PRESETS = {
-  bear: { label: "Bear", grmH2: 16, grm27: 11, lr: 9, kb1: 572, exp: "delayed", disc2: 3 },
+  bear: { label: "Bear", grmH2: 16, grm27: 11, lr: 9, kb1: 572, exp: "cancelled", disc2: 3 },
   base: { label: "Base", grmH2: 21, grm27: 15, lr: 13, kb1: 611, exp: "ontime", disc2: 2 },
   bull: { label: "Bull", grmH2: 25, grm27: 20, lr: 18, kb1: 665, exp: "ontime", disc2: 1 }
 };
@@ -317,8 +320,15 @@ function simulate(p, s, plan) {
     if (contrib) {
       cash += plan.amount; invested += plan.amount; flows[m] -= plan.amount; nContrib++;
       if (m === 0) {
-        const n = Math.floor(cash / K.offer / 10) * 10;
-        shares += n; cash -= n * K.offer; costBasis += n * K.offer;
+        const e = s.entry === undefined ? K.offer : s.entry;
+        if (Math.abs(e - K.offer) < 0.01) {
+          const n = Math.floor(cash / K.offer / 10) * 10;
+          shares += n; cash -= n * K.offer; costBasis += n * K.offer;
+        } else {
+          const pn = e * (1 + K.buyCost);
+          const n = Math.floor(cash / pn);
+          shares += n; cash -= n * pn; costBasis += n * pn;
+        }
       } else {
         const pn = price(m) * fx(m) * (1 + K.buyCost);
         if (pn > 0.01) { const n = Math.floor(cash / pn); shares += n; cash -= n * pn; costBasis += n * pn; }
@@ -364,8 +374,15 @@ function breakevenLR(p, s, plan, target) {
   return { lr: (lo + hi) / 2, capped: null };
 }
 
+function caseSet(s) {
+  // if margins disappoint, does management still build the expansion?
+  const bear = s.bearBuilds ? { ...PRESETS.bear, exp: "delayed" } : PRESETS.bear;
+  return { bear, base: PRESETS.base, bull: PRESETS.bull };
+}
+
 function recommend(s, plan, weights) {
-  const cases = ["bear", "base", "bull"].map(k => ({ k, r: simulate(PRESETS[k], s, plan) }));
+  const set = caseSet(s);
+  const cases = ["bear", "base", "bull"].map(k => ({ k, r: simulate(set[k], s, plan) }));
   const w = { bear: weights.bear, base: weights.base, bull: weights.bull };
   const tot = w.bear + w.base + w.bull || 1;
   let exp = 0, expVal = 0, lossProb = 0, invested = 0;
@@ -406,14 +423,47 @@ function recommend(s, plan, weights) {
   const verdict = decision === "all" ? "Invest it all" : decision === "half" ? "Invest half" : "Hold off";
   const tone = decision === "all" ? "good" : decision === "half" ? "ok" : "bad";
   const edge = expPa - hurdle;
+  // the highest entry price at which this stops being a hold, and the odds that would flip it
+  const decideAt = (entry, w2) => {
+    const cs = ["bear", "base", "bull"].map(k => simulate(set[k], { ...s, entry }, plan));
+    const tt = w2.bear + w2.base + w2.bull || 1;
+    const u = f2 => {
+      let acc = 0;
+      for (let i = 0; i < 3; i++) {
+        const R = cs[i].na ? 0 : cs[i].recovery;
+        const wv = H + f2 * (R - H);
+        if (wv <= 1e-6) return -Infinity;
+        acc += ([w2.bear, w2.base, w2.bull][i] / tt) * Math.log(wv);
+      }
+      return acc;
+    };
+    let kk = 0, bu = u(0);
+    for (let x = 0.01; x <= 1.0001; x += 0.01) { const uu = u(x); if (uu > bu) { bu = uu; kk = x; } }
+    return kk / 2;
+  };
+  // highest entry price at which this stops being a hold, independent of what was typed
+  let maxPrice = null;
+  { let lo = 10, hi = 2000;
+    if (decideAt(lo, w) >= 0.20) {
+      if (decideAt(hi, w) >= 0.20) maxPrice = hi;
+      else { for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (decideAt(mid, w) >= 0.20) lo = mid; else hi = mid; } maxPrice = lo; }
+    }
+  }
+  let bullNeeded = null;
+  if (decision === "hold" && (s.entry === undefined ? K.offer : s.entry) <= 2000) {
+    for (let bv = Math.ceil(w.bull / tot * 100 / 5) * 5; bv <= 95; bv += 5) {
+      const rest = 100 - bv, sh = w.bear + w.base || 1;
+      if (decideAt(s.entry === undefined ? K.offer : s.entry, { bear: rest * w.bear / sh, base: rest * w.base / sh, bull: bv }) >= 0.20) { bullNeeded = bv; break; }
+    }
+  }
   const sf = { ...s, method: "dcf" };   // breakevens measured on fundamental value, so they describe the business
   const be = breakevenLR(PRESETS.base, sf, plan, 1);
   const beDouble = breakevenLR(PRESETS.base, sf, plan, 2);
-  return { cases, exp, expVal, expPa, lossProb, bear, bull, f, kelly, half, decision, capped, verdict, tone, be, beDouble, invested, hurdle, edge,
+  return { cases, exp, expVal, expPa, lossProb, bear, bull, f, kelly, half, decision, capped, verdict, tone, maxPrice, bullNeeded, be, beDouble, invested, hurdle, edge,
            stake: Math.round(plan.amount * f / 1000) * 1000 };
 }
 
-const DEF = { preset: "base", method: "dcf", amount: 1000000, freq: "once", hz: 3, unit: "years", mult: 8, dep: 0.08, payout: 0.30, wacc: 0.125, volUnit: "day", wBear: 30, wBase: 45, wBull: 25, hurdle: 0.15 };
+const DEF = { preset: "base", method: "dcf", amount: 500000, entry: 525, freq: "once", hz: 5, unit: "years", mult: 8, dep: 0.08, payout: 0.30, wacc: 0.125, volUnit: "day", wBear: 30, wBase: 45, wBull: 25, hurdle: 0.15 };
 const st = { ...DEF, p: { ...PRESETS.base }, custom: false };
 const $ = id => document.getElementById(id);
 const ngn = v => "₦" + Math.round(v).toLocaleString("en-NG");
@@ -431,7 +481,7 @@ const VOL = {
 };
 function horizonMonths() { return st.unit === "years" ? st.hz * 12 : st.hz; }
 
-function settings() { return { wacc: st.wacc, payout: st.payout, taxOn: true, dep: st.dep, method: st.method, mult: st.mult, hurdle: st.hurdle }; }
+function settings() { return { wacc: st.wacc, payout: st.payout, taxOn: true, dep: st.dep, method: st.method, mult: st.mult, hurdle: st.hurdle, entry: st.entry }; }
 
 function syncVol() {
   const u = VOL[st.volUnit], el = $("vol");
@@ -444,7 +494,7 @@ function syncVol() {
 
 function syncControls() {
   $("amt").value = st.amount.toLocaleString("en-NG"); fit($("amt"));
-  $("freq").value = st.freq; $("hz").value = st.hz; fit($("hz")); $("unit").value = st.unit; $("method").value = st.method;
+  $("entry").value = st.entry; fit($("entry")); $("freq").value = st.freq; $("hz").value = st.hz; fit($("hz")); $("unit").value = st.unit; $("method").value = st.method;
   document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(!st.custom && b.dataset.p === st.preset)));
   $("lr").value = st.p.lr; $("exp").value = st.p.exp;
   $("mult").value = st.mult; $("dep").value = st.dep; $("payout").value = st.payout; $("wacc").value = st.wacc;
@@ -467,7 +517,8 @@ function render() {
   const note = $("amtNote");
   const M = horizonMonths();
   const maxM = 120;
-  if (!(st.amount >= 5250)) { note.className = "err"; note.textContent = "Enter at least ₦5,250, the price of the minimum 10 IPO shares."; return; }
+  if (!(st.entry >= 10 && st.entry <= 5000)) { note.className = "err"; note.textContent = "Enter a share price between ₦10 and ₦5,000."; return; }
+  if (!(st.amount >= st.entry * 10)) { note.className = "err"; note.textContent = "Enter at least " + ngn(st.entry * 10) + ", the cost of 10 shares at this price."; return; }
   if (!(M >= 1 && M <= maxM) || !Number.isInteger(st.hz)) { note.className = "err"; note.textContent = st.unit === "years" ? "Choose a holding period of 1 to 10 years." : "Choose a holding period of 1 to 120 months."; return; }
   if (st.freq === "annual" && M <= 12 && M < 13) { /* only the IPO purchase happens */ }
 
@@ -483,8 +534,8 @@ function render() {
     $("fundNote").textContent = "";
   } else {
     const bits = [];
-    if (st.freq === "once") bits.push("One investment of " + ngn(st.amount) + " at ₦525.");
-    else bits.push(r.nContrib + " investments of " + ngn(st.amount) + ", " + ngn(r.invested) + " in total. The first buys at ₦525 in the IPO, the rest at the estimated market price.");
+    if (st.freq === "once") bits.push("One investment of " + ngn(st.amount) + " at ₦" + st.entry + (st.entry === 525 ? " in the IPO." : " on the market after listing."));
+    else bits.push(r.nContrib + " investments of " + ngn(st.amount) + ", " + ngn(r.invested) + " in total. The first buys at ₦" + st.entry + ", the rest at the estimated market price.");
     bits.push("You would sell in " + r.exitLabel + ".");
     if (st.custom) bits.push("Using your own margin or volume settings from the assumptions below.");
     note.textContent = bits.join(" ");
@@ -571,7 +622,7 @@ function renderReco(s, plan) {
   v.textContent = rc.verdict; v.className = "reco-verdict " + rc.tone;
   const per = plan.freq === "monthly" ? " a month" : plan.freq === "annual" ? " a year" : "";
   $("rStake").textContent = rc.decision === "hold"
-    ? "Put in nothing at ₦525. Wait for a lower price, or for Q3 results that show margins holding up."
+    ? "Put in nothing at ₦" + st.entry + ". Wait for a lower price, or for Q3 results that show margins holding up."
     : rc.decision === "all"
       ? "Put in the full " + ngn(plan.amount) + per + " you were planning."
       : "Put in " + ngn(rc.stake) + " of the " + ngn(plan.amount) + per + " you were planning, and keep the other half back.";
@@ -579,7 +630,7 @@ function renderReco(s, plan) {
   $("rLoss").textContent = pct(rc.lossProb);
   const beTxt = x => x.capped === "below" ? "under $4/bbl" : x.capped === "above" ? "over $40/bbl" : "$" + x.lr.toFixed(1) + "/bbl";
   $("rBe").textContent = beTxt(rc.be);
-  $("rBe2").textContent = beTxt(rc.beDouble);
+  $("rMax").textContent = rc.maxPrice === null ? "below ₦10" : (rc.maxPrice >= 1999 ? "above ₦2,000" : "₦" + Math.round(rc.maxPrice));
   const why = [];
   why.push((rc.decision === "hold" ? "" : "") + "Weighted across your odds, " + ngn(plan.amount * (plan.freq === "once" ? 1 : 1)) + per + " turns into " + pct(rc.exp) + " of what you put in over " + (plan.months % 12 === 0 ? (plan.months / 12) + (plan.months === 12 ? " year" : " years") : plan.months + " months") + ", against " + pct(Math.pow(1 + rc.hurdle, plan.months / 12)) + " if you took your " + pct(rc.hurdle, 1) + " elsewhere.");
   why.push("On fundamental value, breaking even needs a long-run margin of " + beTxt(rc.be) + ". The accounts imply about $8.9 in 2025 and $27.5 in the H1 2026 boom, so this is the number to watch in the Q3 results.");
@@ -589,6 +640,11 @@ function renderReco(s, plan) {
   if (plan.freq !== "once") why.push("Spreading the money out lowers your average cost to " + ngn(rc.cases[1].r.avgCost) + " a share in the base case, against ₦525 at the IPO, but only if the price actually falls toward fundamental value.");
   if (rc.capped === "short") why.push("The numbers supported investing it all, but the answer is capped at half because you are selling within two years, and the first year after listing is price discovery rather than fundamentals.");
   else if (plan.months < 24 && rc.decision !== "hold") why.push("Selling within two years means you are betting on price discovery rather than fundamentals.");
+  if (rc.decision === "hold" && rc.maxPrice !== null) why.push("The price is the lever, not the odds. At ₦" + Math.round(rc.maxPrice).toLocaleString("en-NG") + " a share this same plan becomes invest half, so if the stock lists and drifts down, run it again with that price.");
+  if (rc.decision === "hold" && rc.maxPrice === null) why.push("Nothing in the price range flips this on your current odds and holding period. Try a longer hold, or a different share-price basis.");
+  if (rc.decision === "hold" && rc.bullNeeded) why.push("It would also flip to invest half if you put the bull case at " + rc.bullNeeded + "% or more.");
+  if (rc.decision === "hold" && !rc.bullNeeded && rc.maxPrice !== null) why.push("Raising the odds on the bull case alone does not flip it at ₦" + st.entry.toLocaleString("en-NG") + ": even at 95% the bear case is still enough of a drag.");
+  why.push("Doubling your money needs a long-run margin of " + beTxt(rc.beDouble) + ".");
   if (st.method === "premium") why.push("You have assumed buyers keep paying today's premium over fundamental value. That is the most generous basis here, so treat this recommendation as the optimistic end.");
   $("rWhy").innerHTML = why.map(t => "<li>" + t + "</li>").join("");
   $("rNote").textContent = "A rule applied to your own odds and assumptions, not advice. Change the odds and it changes.";
@@ -607,7 +663,7 @@ $("unit").addEventListener("change", e => {
   if (was === "months" && st.unit === "years") st.hz = Math.max(1, Math.min(10, Math.round(st.hz / 12)));
   $("hz").value = st.hz; fit($("hz")); render();
 });
-$("freq").addEventListener("change", e => { st.freq = e.target.value; if (st.freq !== "once" && st.amount === 1000000) { st.amount = 100000; $("amt").value = "100,000"; fit($("amt")); } render(); });
+$("freq").addEventListener("change", e => { st.freq = e.target.value; if (st.freq !== "once" && st.amount === 500000) { st.amount = 50000; $("amt").value = "50,000"; fit($("amt")); } render(); });
 document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => { st.amount = +b.dataset.a; $("amt").value = st.amount.toLocaleString("en-NG"); fit($("amt")); render(); }));
 $("method").addEventListener("change", e => { st.method = e.target.value; render(); });
 document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { st.preset = b.dataset.p; st.p = { ...PRESETS[st.preset] }; st.custom = false; syncControls(); render(); }));
@@ -615,6 +671,8 @@ $("lr").addEventListener("input", e => { st.p.lr = +e.target.value; st.custom = 
 $("vol").addEventListener("input", e => { st.p.kb1 = VOL[st.volUnit].inv(+e.target.value); st.custom = true; syncControls(); render(); });
 $("volUnit").addEventListener("change", e => { st.volUnit = e.target.value; syncVol(); });
 $("exp").addEventListener("change", e => { st.p.exp = e.target.value; st.custom = true; syncControls(); render(); });
+$("entry").addEventListener("input", e => { const v = num(e.target.value); st.entry = isNaN(v) ? 0 : v; fit(e.target); render(); });
+$("entry").addEventListener("focus", e => e.target.select());
 ["wBear", "wBase", "wBull", "hurdle"].forEach(id => $(id).addEventListener("input", e => { st[id] = +e.target.value; render(); }));
 ["mult", "dep", "payout", "wacc"].forEach(id => $(id).addEventListener("input", e => { st[id] = +e.target.value; render(); }));
 $("reset").addEventListener("click", () => { Object.assign(st, DEF, { p: { ...PRESETS.base }, custom: false }); syncControls(); render(); });
