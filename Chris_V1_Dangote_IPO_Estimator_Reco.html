@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chris_V1 Dangote IPO Estimator_Reco</title>
+<style>
+:root{
+  --paper:#F1F4F2; --panel:#FFFFFF; --ink:#13242C; --muted:#56666D; --line:#D3DCD9;
+  --gain:#0B7A4B; --loss:#B3432B;
+  --focus:#1F6FB2;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:760px;margin:0 auto;padding:28px 20px 56px}
+h1{font-size:15px;font-weight:600;color:var(--muted);margin:0 0 18px;letter-spacing:.01em}
+h2{font-size:19px;font-weight:650;margin:40px 0 12px}
+p{margin:0 0 12px}
+.sentence{font-size:clamp(22px,4.6vw,30px);line-height:1.6;font-weight:500;letter-spacing:-.01em;margin:0 0 10px}
+.sentence input,.sentence select{font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:2px solid var(--ink);padding:0 2px;border-radius:0;appearance:none;-webkit-appearance:none;cursor:pointer}
+.sentence input{width:7.2ch;text-align:left}
+.sentence select{padding-right:1.1em;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);background-position:calc(100% - .55em) 55%,calc(100% - .3em) 55%;background-size:.25em .25em;background-repeat:no-repeat}
+.sentence input:focus,.sentence select:focus,button:focus-visible,input[type=range]:focus-visible,summary:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;vertical-align:middle;font-size:.62em;font-weight:600}
+.seg button{font:inherit;border:0;background:transparent;color:var(--ink);padding:.28em .9em;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+.chips button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.chips button:hover{border-color:var(--ink)}
+.note{font-size:14px;color:var(--muted)}
+.err{font-size:14px;color:var(--loss);font-weight:600}
+.result{background:var(--panel);border-radius:18px;padding:26px 24px 22px;margin-top:22px;border:1px solid var(--line)}
+.result .lead{font-size:16px;color:var(--muted);margin:0}
+.big{font-size:clamp(40px,10vw,64px);font-weight:750;letter-spacing:-.03em;line-height:1.05;margin:4px 0 6px}
+.verdict{font-size:17px;font-weight:600;margin:0 0 20px}
+.bars{display:grid;gap:14px;margin:0 0 22px;padding-top:14px}
+.bar-row{display:grid;grid-template-columns:100px 1fr 64px;align-items:center;gap:12px;font-size:14px}
+.track{position:relative;height:16px;background:var(--paper);border-radius:8px}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:8px;transition:width .35s ease}
+.even{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink)}
+.even-label{position:absolute;top:-24px;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+.bar-row .v{text-align:right;font-weight:650}
+dl.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;margin:0;border-top:1px solid var(--line);padding-top:18px}
+dl.stats div{min-width:0}
+dl.stats dt{font-size:13px;color:var(--muted)}
+dl.stats dd{margin:0;font-size:18px;font-weight:650}
+.reco{background:var(--ink);color:#F1F4F2;border-radius:18px;padding:24px 22px;margin-top:18px}
+.reco-kicker{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9FB3BC;margin:0 0 8px}
+.reco-verdict{font-size:clamp(24px,5.4vw,32px);font-weight:700;letter-spacing:-.02em;line-height:1.2;margin:0 0 8px}
+.reco-verdict.good{color:#6FD8A4}.reco-verdict.ok{color:#F2C879}.reco-verdict.bad{color:#F09B85}
+.reco-stake{font-size:17px;margin:0 0 18px;color:#E4EBEE}
+.reco .stats{border-top:1px solid #2E4049;color:#F1F4F2}
+.reco .stats dt{color:#9FB3BC}
+.reco .stats dd{font-size:17px}
+.reco-why{margin:18px 0 0;padding:0 0 0 18px;font-size:15px;color:#DCE5E9}
+.reco-why li{margin-bottom:7px}
+.odds{margin-top:20px;border-top:1px solid #2E4049;padding-top:16px}
+.odds-title{font-size:14px;font-weight:600;color:#9FB3BC;margin:0 0 10px}
+.odds-title span{font-weight:400}
+.odds-row{display:grid;grid-template-columns:104px 1fr 52px;align-items:center;gap:10px;font-size:14px;margin-bottom:10px}
+.odds-row label{line-height:1.25}
+.odds-row input[type=range]{width:100%;accent-color:#6FD8A4;margin:0}
+.odds-row output{text-align:right;font-weight:650}
+.reco .note{color:#9FB3BC;margin:14px 0 0}
+.chart-wrap{position:relative;height:300px;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{padding:10px 8px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-size:13px;color:var(--muted);font-weight:600}
+tr.mine td{font-weight:700}
+.pos{color:var(--gain)} .neg{color:var(--loss)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-top:40px}
+summary{cursor:pointer;padding:16px 20px;font-weight:650;font-size:17px}
+.controls{padding:0 20px 20px;display:grid;gap:20px}
+.ctl label{display:flex;justify-content:space-between;gap:12px;font-size:15px;font-weight:600}
+.ctl label output{font-weight:700}
+.ctl p{font-size:13px;color:var(--muted);margin:4px 0 0}
+.ctl input[type=range]{width:100%;accent-color:var(--ink);margin-top:8px}
+.ctl select{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%;margin-top:8px}
+.ctl #volUnit{width:auto}
+.ctl.off{opacity:.45}
+.reset{justify-self:start;font:inherit;font-size:14px;border:1px solid var(--ink);background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--ink)}
+.explain p{font-size:15px;color:#2B3A40;max-width:66ch}
+footer{margin-top:36px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:520px){main{padding:22px 16px 48px}.odds-row{grid-template-columns:92px 1fr 48px}.reco{padding:20px 18px}.bar-row{grid-template-columns:86px 1fr 52px}.result{padding:22px 18px}}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Chris_V1 Dangote IPO Estimator_Reco</h1>
+
+<p class="sentence">
+If I invest <label class="sr" for="amt">Amount per investment, in naira</label>₦<input id="amt" inputmode="numeric" autocomplete="off" value="1,000,000">
+<label class="sr" for="freq">How often</label><select id="freq">
+<option value="once">once, at the IPO,</option>
+<option value="monthly">every month from the IPO</option>
+<option value="annual">every year from the IPO</option>
+</select>
+and sell after <label class="sr" for="hz">Holding period</label><input id="hz" class="hz" inputmode="numeric" autocomplete="off" value="3">
+<label class="sr" for="unit">Unit of time</label><select id="unit"><option value="years">years</option><option value="months">months</option></select>,
+with refining margins on the
+<span class="seg" role="group" aria-label="Margin case">
+<button type="button" data-p="bear" aria-pressed="false">Bear</button><button type="button" data-p="base" aria-pressed="true">Base</button><button type="button" data-p="bull" aria-pressed="false">Bull</button>
+</span>
+case and a share price that tracks
+<label class="sr" for="method">Share price basis</label><select id="method">
+<option value="dcf">fundamental value</option>
+<option value="multiple">a market multiple</option>
+<option value="premium">today's premium</option>
+</select>,
+</p>
+<div class="chips" role="group" aria-label="Quick amounts">
+<button type="button" data-a="50000">₦50k</button><button type="button" data-a="100000">₦100k</button><button type="button" data-a="500000">₦500k</button><button type="button" data-a="1000000">₦1m</button><button type="button" data-a="3000000">₦3m</button>
+</div>
+<p class="note" id="amtNote"></p>
+
+<section class="result" aria-live="polite">
+<p class="lead">you could get back</p>
+<div class="big" id="big">₦0</div>
+<p class="verdict" id="verdict"></p>
+<div class="bars">
+<div class="bar-row"><span>Money back</span><div class="track"><div class="fill" id="fillD"></div><div class="even" id="even1"><span class="even-label">What you put in</span></div></div><span class="v" id="vD"></span></div>
+</div>
+<dl class="stats">
+<div><dt>You put in</dt><dd id="sIn"></dd></div>
+<div><dt>Return per year</dt><dd id="sCagr"></dd></div>
+<div><dt>Shares you would own</dt><dd id="sSh"></dd></div>
+<div><dt>Average cost per share</dt><dd id="sAvg"></dd></div>
+<div><dt>Share price when you sell</dt><dd id="sPx"></dd></div>
+<div><dt>Dividends received, after 10% tax</dt><dd id="sDiv"></dd></div>
+</dl>
+<p class="note" id="fundNote" style="margin:16px 0 0"></p>
+</section>
+
+
+<section class="reco" id="reco" aria-live="polite">
+<p class="reco-kicker">Recommendation</p>
+<p class="reco-verdict" id="rVerdict"></p>
+<p class="reco-stake" id="rStake"></p>
+<dl class="stats compact">
+<div><dt>Expected outcome, odds-weighted</dt><dd id="rExp"></dd></div>
+<div><dt>Chance of getting back less than you put in</dt><dd id="rLoss"></dd></div>
+<div><dt>Margin needed to break even</dt><dd id="rBe"></dd></div>
+<div><dt>Margin needed to double it</dt><dd id="rBe2"></dd></div>
+</dl>
+<ul class="reco-why" id="rWhy"></ul>
+<div class="odds">
+<p class="odds-title">Your odds on each case, and the yearly return you could get elsewhere <span id="oddsSum"></span></p>
+<div class="odds-row"><label for="wBear">Bear</label><input type="range" id="wBear" min="0" max="100" step="5"><output id="wBearO"></output></div>
+<div class="odds-row"><label for="wBase">Base</label><input type="range" id="wBase" min="0" max="100" step="5"><output id="wBaseO"></output></div>
+<div class="odds-row"><label for="wBull">Bull</label><input type="range" id="wBull" min="0" max="100" step="5"><output id="wBullO"></output></div>
+<div class="odds-row"><label for="hurdle">Elsewhere</label><input type="range" id="hurdle" min="0" max="0.30" step="0.005"><output id="hurdleO"></output></div>
+</div>
+<p class="note" id="rNote"></p>
+</section>
+
+<h2>Your money over time</h2>
+<p class="note">What your holding would be worth each month, dividends included, against what you have put in so far.</p>
+<div class="chart-wrap"><canvas id="chart" role="img" aria-label="Line chart of the value of your holding by month against the total amount invested"></canvas></div>
+
+<h2>All three cases for your plan</h2>
+<table>
+<thead><tr><th scope="col">Case</th><th scope="col">Price at sale</th><th scope="col">You get back</th><th scope="col">Gain or loss</th><th scope="col">Per year</th></tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+<p class="note" style="margin-top:10px">Cases differ in long-run margin, refinery volumes and expansion timing. Everything else follows your settings.</p>
+
+<details id="adv">
+<summary>Adjust the assumptions</summary>
+<div class="controls">
+<div class="ctl"><label for="lr">Long-run refining margin (GRM) <output id="lrO"></output></label><input type="range" id="lr" min="6" max="30" step="0.5"><p>US$ per barrel from 2028, rising with inflation. The accounts imply about $8.9 in 2025 and $27.5 in H1 2026.</p></div>
+<div class="ctl"><label for="vol">Crude processed, current refinery <output id="volO"></output></label>
+<select id="volUnit" aria-label="Volume unit"><option value="day">Barrels a day</option><option value="month">Barrels a month</option><option value="year">Barrels a year</option></select>
+<input type="range" id="vol" aria-label="Crude processed"><p id="volHint"></p></div>
+<div class="ctl"><label for="exp">Expansion to 1.4 million barrels a day</label><select id="exp"><option value="ontime">Online in 2030 at $14.3bn</option><option value="delayed">Delayed to 2032, 30% over budget</option><option value="cancelled">Cancelled</option></select></div>
+<div class="ctl" id="multCtl"><label for="mult">Market multiple (EV/EBITDA) <output id="multO"></output></label><input type="range" id="mult" min="4" max="16" step="0.5"><p>Used when the price tracks a market multiple. Global refiners have typically traded at mid-to-high single digits.</p></div>
+<div class="ctl"><label for="dep">Naira weakening per year <output id="depO"></output></label><input type="range" id="dep" min="0" max="0.20" step="0.01"><p>The company earns in dollars, so a weaker naira lifts the naira share price.</p></div>
+<div class="ctl"><label for="payout">Dividend payout once expansion is running <output id="payoutO"></output></label><input type="range" id="payout" min="0" max="0.80" step="0.05"><p>Share of profit paid out, limited to free cash flow. No dividend policy has been committed.</p></div>
+<div class="ctl"><label for="wacc">Discount rate for fundamental value (US$) <output id="waccO"></output></label><input type="range" id="wacc" min="0.09" max="0.15" step="0.0025"><p>Higher means more risk priced in. 12.5% reflects Nigerian sovereign risk plus an equity premium.</p></div>
+<button type="button" class="reset" id="reset">Reset to defaults</button>
+</div>
+</details>
+
+<section class="explain">
+<h2>How the estimate works</h2>
+<p>The refinery is valued with the same US$ discounted cash flow model as the accompanying spreadsheet, built from the prospectus dated 7 September 2026. Each case sets the long-run refining margin, how much crude the refinery processes, and whether the 700,000 barrel a day expansion arrives on time.</p>
+<p>Your first investment buys at ₦525 in the IPO, in lots of 10 shares. Later monthly or yearly investments buy at the estimated market price that month, plus 1.5% dealing costs, and any small change waits for the next purchase. Dividends are paid out to you each year, not reinvested.</p>
+<p>The share price follows the basis you choose. Fundamental value is what the model says the shares are worth on that date, so if the market moves there, later buyers pay less than IPO buyers. A market multiple prices the company at the EV/EBITDA multiple you set, less its debt. Today's premium assumes buyers keep paying the same mark-up over fundamental value that ₦525 represents today.</p>
+<p>The recommendation is a rule, not a judgement call. It weights the three cases by the odds you set, compares the odds-weighted return with the return you say you could get elsewhere, and then sizes the bet using a half-Kelly rule: the fraction of your money that maximises expected long-run growth, halved for caution. That fraction is turned into one of three answers. Above 45% it says invest it all, above 20% invest half, and below that hold off. If you are selling within two years the answer is capped at invest half. The two margin figures are measured on fundamental value, so they describe what the business must earn rather than what the market might pay. In the bear case the model floors equity value at zero, so that case is treated as a total loss.</p>
+<p>Return per year is money-weighted, so it accounts for when each naira went in and came out. Selling costs of 1.5% and 10% withholding tax on dividends are included. Month zero is listing, assumed December 2026.</p>
+</section>
+
+<footer>Illustrative estimates from a model with many assumptions, not a forecast of the share price and not investment advice. Speak to an adviser registered with the SEC before investing. Exchange rate ₦1,322 per US$ as of early September 2026.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const K = {
+  fx0: 1322, offer: 525, shares: 124228915901,
+  ndOpen: 1398.468 + 275.566 - 258 - 2111.007 * 1000 / 1322,
+  nwc0: 642.81, infl: 0.02, fix1: 450, varc: 1.5, fix2: 380, adm1: 300, adm2: 100,
+  sus1: 250, sus2: 220, da0: 470, da0End: 2049, lifeS: 15, lifeE: 25, capex: 14300,
+  w: { 4: 0.10, 3: 0.25, 2: 0.30, 1: 0.25, 0: 0.10 }, ramp1: 0.4, ramp2: 0.8, cap2: 700,
+  metr: 0.15, cit: 0.30, levy: 0.04, taxYr: 2028, dom0: 360, domg: 0.03,
+  brent: { 2026: 80, 2027: 75 }, brentLR: 70, diff: 2, nwcp: 0.025, g: 0.02,
+  kd: 0.075, cashRate: 0.04, sellCost: 0.015, buyCost: 0.015, divWht: 0.10, lastYear: 2060
+};
+
+const PRESETS = {
+  bear: { label: "Bear", grmH2: 16, grm27: 11, lr: 9, kb1: 572, exp: "delayed", disc2: 3 },
+  base: { label: "Base", grmH2: 21, grm27: 15, lr: 13, kb1: 611, exp: "ontime", disc2: 2 },
+  bull: { label: "Bull", grmH2: 25, grm27: 20, lr: 18, kb1: 665, exp: "ontime", disc2: 1 }
+};
+
+function runModel(p, s) {
+  // p: operating scenario; s: settings {wacc, payout, taxOn}
+  const online = p.exp === "cancelled" ? null : (p.exp === "delayed" ? 2032 : 2030);
+  const overrun = p.exp === "delayed" ? 1.3 : 1.0;
+  const years = [];
+  let nwcPrev = K.nwc0, nd = K.ndOpen, cumE = 0;
+  const susHist = [];
+  const divStart = online ? online + 1 : 2028;
+  for (let t = 2026; t <= K.lastYear; t++) {
+    const L = t === 2026 ? 0.5 : 1;
+    const esc = Math.pow(1 + K.infl, t - 2026);
+    const kb1 = p.kb1;
+    const u2 = Math.min(0.95, p.kb1 / 650);
+    const off = online ? t - online : -99;
+    const ramp = online ? (off < 0 ? 0 : off === 0 ? K.ramp1 : off === 1 ? K.ramp2 : 1) : 0;
+    const kb2 = K.cap2 * u2 * ramp;
+    const b1 = kb1 * 365 * L / 1000, b2 = kb2 * 365 * L / 1000;
+    const grm1 = t === 2026 ? p.grmH2 : t === 2027 ? p.grm27 : p.lr * Math.pow(1 + K.infl, t - 2028);
+    const grm2 = grm1 - p.disc2;
+    const gm = grm1 * b1 + grm2 * b2;
+    const brent = K.brent[t] !== undefined ? K.brent[t] : K.brentLR;
+    const rev = b1 * (brent + K.diff + grm1) + b2 * (brent + K.diff + grm2);
+    const t2on = online !== null && off >= 0;
+    const opex = K.fix1 * esc * L + (t2on ? K.fix2 * esc * L : 0) + K.varc * esc * (b1 + b2);
+    const adm = (K.adm1 + (t2on ? K.adm2 : 0)) * esc * L;
+    const ebitda = gm - opex - adm;
+    const sus = K.sus1 * esc * L + (online !== null && off >= 1 ? K.sus2 * esc * L : 0);
+    const k = online !== null ? online - t : -1;
+    const exp = online !== null && k >= 0 && k <= 4 ? K.capex * overrun * K.w[k] : 0;
+    susHist.push(sus);
+    cumE += exp;
+    const daS = susHist.slice(-K.lifeS).reduce((a, b) => a + b, 0) / K.lifeS * L;
+    const daE = t2on && off < K.lifeE ? cumE / K.lifeE * L : 0;
+    const daX = t <= K.da0End ? K.da0 * L : 0;
+    const da = daX + daS + daE;
+    const ebit = ebitda - da;
+    const kbt = kb1 + kb2;
+    const share = kbt > 0 ? Math.min(1, K.dom0 * Math.pow(1 + K.domg, t - 2026) / kbt) : 0;
+    const rate = (t < K.taxYr || !s.taxOn) ? K.metr : Math.max(K.metr, share * (K.cit + K.levy));
+    const taxU = rate * Math.max(0, ebit);
+    const nwc = K.nwcp * rev / L;
+    const dnwc = nwc - nwcPrev; nwcPrev = nwc;
+    const capex = sus + exp;
+    const fcff = ebitda - taxU - capex - dnwc;
+    // levered path for net debt and dividends
+    const interest = nd > 0 ? nd * K.kd * L : nd * K.cashRate * L;
+    const taxL = rate * Math.max(0, ebit - interest);
+    const ni = ebit - interest - taxL;
+    const cfe = ebitda - taxL - capex - dnwc - interest;
+    const div = t >= divStart ? Math.min(s.payout * Math.max(0, ni), Math.max(0, cfe)) : 0;
+    nd = nd - cfe + div;
+    years.push({ t, L, ebitda, ebit, fcff, ni, div, nd, dps: div * 1e6 / K.shares, kbt, rate });
+  }
+  return years;
+}
+
+function fundamentalPerShare(years, T, wacc) {
+  // equity value per share (US$) at end of year T
+  let ev = 0;
+  const last = years[years.length - 1];
+  for (const y of years) {
+    if (y.t <= T) continue;
+    ev += y.fcff / Math.pow(1 + wacc, y.t - T - 0.5);
+  }
+  const tv = last.fcff * (1 + K.g) / (wacc - K.g);
+  ev += tv / Math.pow(1 + wacc, last.t - T);
+  const nd = years.find(y => y.t === T).nd;
+  return Math.max(0, (ev - nd) * 1e6 / K.shares);
+}
+
+function monthLabel(m) {
+  const d = new Date(2026, 11 + m, 1);
+  return d.toLocaleString("en-GB", { month: "short" }) + " " + d.getFullYear();
+}
+
+function simulate(p, s, plan) {
+  const years = runModel(p, s);
+  const byT = t => years.find(y => y.t === t);
+  const f0 = fundamentalPerShare(years, 2026, s.wacc);
+  const offerUsd = K.offer / K.fx0;
+  const P = [];
+  for (let k = 0; k <= 10; k++) {
+    const T = 2026 + k;
+    if (s.method === "dcf") P.push(fundamentalPerShare(years, T, s.wacc));
+    else if (s.method === "multiple") P.push(Math.max(0, (s.mult * byT(T + 1).ebitda - byT(T).nd) * 1e6 / K.shares));
+    else P.push(f0 > 0.005 ? offerUsd * fundamentalPerShare(years, T, s.wacc) / f0 : null);
+  }
+  const base = { f0Ngn: f0 * K.fx0, exitLabel: monthLabel(plan.months) };
+  if (P[0] === null) return { ...base, na: true };
+  const price = m => {
+    const k = Math.min(9, Math.floor(m / 12)), fr = (m - 12 * k) / 12, a = P[k], b = P[k + 1];
+    return a > 0 && b > 0 ? a * Math.pow(b / a, fr) : Math.max(0, a + (b - a) * fr);
+  };
+  const fx = m => K.fx0 * Math.pow(1 + s.dep, m / 12);
+  const M = plan.months;
+  const flows = new Array(M + 1).fill(0);
+  let shares = 0, cash = 0, invested = 0, costBasis = 0, divCum = 0, nContrib = 0, idleNote = false;
+  const series = [];
+  for (let m = 0; m <= M; m++) {
+    const contrib = m < M && (plan.freq === "monthly" || (plan.freq === "annual" && m % 12 === 0) || (plan.freq === "once" && m === 0));
+    if (contrib) {
+      cash += plan.amount; invested += plan.amount; flows[m] -= plan.amount; nContrib++;
+      if (m === 0) {
+        const n = Math.floor(cash / K.offer / 10) * 10;
+        shares += n; cash -= n * K.offer; costBasis += n * K.offer;
+      } else {
+        const pn = price(m) * fx(m) * (1 + K.buyCost);
+        if (pn > 0.01) { const n = Math.floor(cash / pn); shares += n; cash -= n * pn; costBasis += n * pn; }
+        else idleNote = true;
+      }
+    }
+    if (m > 0 && m % 12 === 0) {
+      const y = byT(2026 + m / 12);
+      const d = shares * y.dps * fx(m) * (1 - K.divWht);
+      divCum += d; flows[m] += d;
+    }
+    const mv = m === 0 ? costBasis : shares * price(m) * fx(m);
+    series.push({ m, label: monthLabel(m), invested, value: mv + cash + divCum });
+  }
+  const pxExit = price(M) * fx(M);
+  const proceeds = shares * pxExit * (1 - K.sellCost);
+  const total = proceeds + cash + divCum;
+  flows[M] += proceeds + cash;
+  const fxGain = shares * price(M) * (fx(M) - K.fx0) * (1 - K.sellCost);
+  // money-weighted return (monthly IRR, annualised)
+  let irrA;
+  if (proceeds + cash + divCum <= 0.5) irrA = -1;
+  else {
+    const npv = r => flows.reduce((acc, f, i) => acc + f / Math.pow(1 + r, i), 0);
+    let lo = -0.99, hi = 1.0;
+    for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (npv(mid) > 0) lo = mid; else hi = mid; }
+    irrA = Math.pow(1 + (lo + hi) / 2, 12) - 1;
+  }
+  return { ...base, na: false, invested, total, shares, avgCost: shares > 0 ? costBasis / shares : 0, pxExit, divCum, fxGain,
+           cashLeft: cash, irrA, series, nContrib, idleNote, recovery: invested > 0 ? total / invested : 0 };
+}
+
+function breakevenLR(p, s, plan, target) {
+  // long-run GRM at which the plan returns exactly what was put in (or hits a target multiple)
+  const f = lr => {
+    const r = simulate({ ...p, lr }, s, plan);
+    return r.na ? -1 : r.recovery - (target || 1);
+  };
+  let lo = 4, hi = 40;
+  if (f(lo) > 0) return { lr: lo, capped: "below" };
+  if (f(hi) < 0) return { lr: hi, capped: "above" };
+  for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (f(mid) < 0) lo = mid; else hi = mid; }
+  return { lr: (lo + hi) / 2, capped: null };
+}
+
+function recommend(s, plan, weights) {
+  const cases = ["bear", "base", "bull"].map(k => ({ k, r: simulate(PRESETS[k], s, plan) }));
+  const w = { bear: weights.bear, base: weights.base, bull: weights.bull };
+  const tot = w.bear + w.base + w.bull || 1;
+  let exp = 0, expVal = 0, lossProb = 0, invested = 0;
+  for (const c of cases) {
+    const p = w[c.k] / tot;
+    const rec = c.r.na ? 0 : c.r.recovery;
+    exp += p * rec; expVal += p * (c.r.na ? 0 : c.r.total);
+    if (rec < 1) lossProb += p;
+    invested = c.r.invested || invested;
+  }
+  const bear = cases[0].r.na ? 0 : cases[0].r.recovery;
+  const bull = cases[2].r.na ? 0 : cases[2].r.recovery;
+  const yrs = plan.months / 12;
+  const expPa = exp > 0 ? Math.pow(exp, 1 / yrs) - 1 : -1;
+  // stake fraction: scaled by expected excess return, cut back for downside severity
+  const hurdle = s.hurdle === undefined ? 0.15 : s.hurdle;
+  const H = Math.pow(1 + hurdle, yrs);             // what the money would grow to elsewhere
+  // half-Kelly stake: fraction of the money that maximises expected log wealth,
+  // where the rest earns the hurdle rate
+  const util = f => {
+    let u = 0;
+    for (const c of cases) {
+      const R = c.r.na ? 0 : c.r.recovery;
+      const w2 = H + f * (R - H);
+      if (w2 <= 1e-6) return -Infinity;
+      u += (w[c.k] / tot) * Math.log(w2);
+    }
+    return u;
+  };
+  let kelly = 0, bestU = util(0);
+  for (let x = 0.01; x <= 1.0001; x += 0.01) { const u = util(x); if (u > bestU) { bestU = u; kelly = x; } }
+  const half = kelly / 2;                          // half Kelly, the cautious version
+  // snap to a decision the investor can act on: all, half, or none
+  let decision = half >= 0.45 ? "all" : half >= 0.20 ? "half" : "hold";
+  let capped = null;
+  if (plan.months < 24 && decision === "all") { decision = "half"; capped = "short"; }
+  const f = decision === "all" ? 1 : decision === "half" ? 0.5 : 0;
+  const verdict = decision === "all" ? "Invest it all" : decision === "half" ? "Invest half" : "Hold off";
+  const tone = decision === "all" ? "good" : decision === "half" ? "ok" : "bad";
+  const edge = expPa - hurdle;
+  const sf = { ...s, method: "dcf" };   // breakevens measured on fundamental value, so they describe the business
+  const be = breakevenLR(PRESETS.base, sf, plan, 1);
+  const beDouble = breakevenLR(PRESETS.base, sf, plan, 2);
+  return { cases, exp, expVal, expPa, lossProb, bear, bull, f, kelly, half, decision, capped, verdict, tone, be, beDouble, invested, hurdle, edge,
+           stake: Math.round(plan.amount * f / 1000) * 1000 };
+}
+
+const DEF = { preset: "base", method: "dcf", amount: 1000000, freq: "once", hz: 3, unit: "years", mult: 8, dep: 0.08, payout: 0.30, wacc: 0.125, volUnit: "day", wBear: 30, wBase: 45, wBull: 25, hurdle: 0.15 };
+const st = { ...DEF, p: { ...PRESETS.base }, custom: false };
+const $ = id => document.getElementById(id);
+const ngn = v => "₦" + Math.round(v).toLocaleString("en-NG");
+const ngnC = v => { const a = Math.abs(v); const s = v < 0 ? "-" : ""; if (a >= 1e9) return s + "₦" + (a / 1e9).toFixed(1) + "bn"; if (a >= 1e6) return s + "₦" + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "m"; if (a >= 1e3) return s + "₦" + Math.round(a / 1e3) + "k"; return s + "₦" + Math.round(a); };
+const pct = (v, d = 0) => (v * 100).toFixed(d) + "%";
+const fitSel = el => { const c = fitSel.c || (fitSel.c = document.createElement("canvas").getContext("2d")); const cs = getComputedStyle(el); c.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily; el.style.width = Math.ceil(c.measureText(el.options[el.selectedIndex].text).width + parseFloat(cs.fontSize) * 1.3) + "px"; };
+const fitSels = () => document.querySelectorAll(".sentence select").forEach(fitSel);
+const fit = el => { el.style.width = Math.max(2, el.value.length + 0.4) + "ch"; };
+
+// volume units: kbpd <-> display
+const VOL = {
+  day: { f: k => k * 1000, inv: v => v / 1000, min: 400000, max: 700000, step: 5000, fmt: v => Math.round(v).toLocaleString("en-NG") + " barrels a day" },
+  month: { f: k => k * 1000 * 365 / 12 / 1e6, inv: v => v * 1e6 * 12 / 365 / 1000, min: 12.2, max: 21.3, step: 0.1, fmt: v => v.toFixed(1) + " million barrels a month" },
+  year: { f: k => k * 365 / 1000, inv: v => v * 1000 / 365, min: 146, max: 255, step: 1, fmt: v => Math.round(v) + " million barrels a year" }
+};
+function horizonMonths() { return st.unit === "years" ? st.hz * 12 : st.hz; }
+
+function settings() { return { wacc: st.wacc, payout: st.payout, taxOn: true, dep: st.dep, method: st.method, mult: st.mult, hurdle: st.hurdle }; }
+
+function syncVol() {
+  const u = VOL[st.volUnit], el = $("vol");
+  el.min = u.min; el.max = u.max; el.step = u.step; el.value = u.f(st.p.kb1);
+  $("volUnit").value = st.volUnit;
+  $("volO").textContent = u.fmt(u.f(st.p.kb1));
+  const alt = ["day", "month", "year"].filter(k => k !== st.volUnit).map(k => VOL[k].fmt(VOL[k].f(st.p.kb1)));
+  $("volHint").textContent = "Same as " + alt.join(" or ") + ". H1 2026 averaged about 625,000 a day; nameplate 650,000, tested at 700,000. The expansion adds up to 665,000 a day on top.";
+}
+
+function syncControls() {
+  $("amt").value = st.amount.toLocaleString("en-NG"); fit($("amt"));
+  $("freq").value = st.freq; $("hz").value = st.hz; fit($("hz")); $("unit").value = st.unit; $("method").value = st.method;
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(!st.custom && b.dataset.p === st.preset)));
+  $("lr").value = st.p.lr; $("exp").value = st.p.exp;
+  $("mult").value = st.mult; $("dep").value = st.dep; $("payout").value = st.payout; $("wacc").value = st.wacc;
+  $("wBear").value = st.wBear; $("wBase").value = st.wBase; $("wBull").value = st.wBull; $("hurdle").value = st.hurdle;
+  syncVol(); fitSels();
+}
+
+let chart;
+function render() {
+  fitSels();
+  const s = settings();
+  $("lrO").textContent = "$" + Number(st.p.lr).toFixed(1) + "/bbl";
+  $("multO").textContent = Number(st.mult).toFixed(1) + "x";
+  $("depO").textContent = pct(st.dep);
+  $("payoutO").textContent = pct(st.payout);
+  $("waccO").textContent = pct(st.wacc, 2).replace(/0%$/, "%");
+  $("multCtl").classList.toggle("off", st.method !== "multiple");
+  $("volO").textContent = VOL[st.volUnit].fmt(VOL[st.volUnit].f(st.p.kb1));
+
+  const note = $("amtNote");
+  const M = horizonMonths();
+  const maxM = 120;
+  if (!(st.amount >= 5250)) { note.className = "err"; note.textContent = "Enter at least ₦5,250, the price of the minimum 10 IPO shares."; return; }
+  if (!(M >= 1 && M <= maxM) || !Number.isInteger(st.hz)) { note.className = "err"; note.textContent = st.unit === "years" ? "Choose a holding period of 1 to 10 years." : "Choose a holding period of 1 to 120 months."; return; }
+  if (st.freq === "annual" && M <= 12 && M < 13) { /* only the IPO purchase happens */ }
+
+  const plan = { amount: st.amount, freq: st.freq, months: M };
+  const r = simulate(st.p, s, plan);
+  note.className = "note";
+  if (r.na) {
+    note.textContent = "You would sell in " + r.exitLabel + ".";
+    $("big").textContent = "Not meaningful";
+    $("verdict").textContent = "This case gives a fundamental value near zero today, so there is no premium to carry forward. Choose another price basis.";
+    ["vD", "sIn", "sCagr", "sSh", "sAvg", "sPx", "sDiv"].forEach(id => $(id).textContent = "n/a");
+    $("fillD").style.width = "0";
+    $("fundNote").textContent = "";
+  } else {
+    const bits = [];
+    if (st.freq === "once") bits.push("One investment of " + ngn(st.amount) + " at ₦525.");
+    else bits.push(r.nContrib + " investments of " + ngn(st.amount) + ", " + ngn(r.invested) + " in total. The first buys at ₦525 in the IPO, the rest at the estimated market price.");
+    bits.push("You would sell in " + r.exitLabel + ".");
+    if (st.custom) bits.push("Using your own margin or volume settings from the assumptions below.");
+    note.textContent = bits.join(" ");
+
+    $("big").textContent = ngn(r.total);
+    const rec = r.recovery;
+    $("verdict").textContent = (rec >= 1 ? "A gain of " + pct(rec - 1) + ", or " + ngn(r.total - r.invested) : "A loss of " + pct(1 - rec) + ", or " + ngn(r.invested - r.total)) + ", on the " + ngn(r.invested) + " you put in.";
+    const scale = Math.max(2, rec * 1.08);
+    $("fillD").style.width = Math.min(100, rec / scale * 100) + "%";
+    $("fillD").style.background = rec >= 1 ? "var(--gain)" : "var(--loss)";
+    $("even1").style.left = (100 / scale) + "%";
+    $("vD").textContent = pct(rec);
+    $("sIn").textContent = ngn(r.invested);
+    $("sCagr").textContent = (r.irrA >= 0 ? "+" : "") + pct(r.irrA, 1);
+    $("sCagr").className = r.irrA >= 0 ? "pos" : "neg";
+    $("sSh").textContent = r.shares.toLocaleString("en-NG");
+    $("sAvg").textContent = r.shares > 0 ? ngn(r.avgCost) : "n/a";
+    $("sPx").textContent = ngn(r.pxExit);
+    $("sDiv").textContent = ngn(r.divCum);
+    const fn = ["In this case the model values the shares at " + ngn(r.f0Ngn) + " each today, against the ₦525 offer price."];
+    if (r.fxGain > 1) fn.push(ngn(r.fxGain) + " of the sale value comes from the naira weakening.");
+    if (r.idleNote || r.cashLeft >= 1000) fn.push(ngn(r.cashLeft) + (r.idleNote ? " is returned as uninvested cash because the model gives the shares no value to buy at." : " of small change was never invested and is returned at the end."));
+    $("fundNote").textContent = fn.join(" ");
+  }
+
+  // table
+  const rows = [];
+  const cases = ["bear", "base", "bull"].map(k => ({ k, name: PRESETS[k].label, res: simulate(PRESETS[k], s, plan) }));
+  if (st.custom) cases.push({ k: "custom", name: "Your settings", res: r });
+  for (const c of cases) {
+    const x = c.res, mine = st.custom ? c.k === "custom" : c.k === st.preset;
+    if (x.na) { rows.push(`<tr class="${mine ? "mine" : ""}"><td>${c.name}</td><td>n/a</td><td>n/a</td><td>n/a</td><td>n/a</td></tr>`); continue; }
+    const g = x.recovery - 1;
+    rows.push(`<tr class="${mine ? "mine" : ""}"><td>${c.name}</td><td>${ngn(x.pxExit)}</td><td>${ngnC(x.total)}</td><td class="${g >= 0 ? "pos" : "neg"}">${(g >= 0 ? "+" : "") + pct(g)}</td><td class="${x.irrA >= 0 ? "pos" : "neg"}">${(x.irrA >= 0 ? "+" : "") + pct(x.irrA, 1)}</td></tr>`);
+  }
+  $("tbody").innerHTML = rows.join("");
+  renderReco(s, plan);
+
+  // chart
+  if (typeof Chart === "undefined" || r.na) { if (chart && r.na) { chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []); chart.update(); } return; }
+  const labels = r.series.map(x => x.label);
+  const val = r.series.map(x => x.value);
+  const inv = r.series.map(x => x.invested);
+  const col = r.recovery >= 1 ? "#0B7A4B" : "#B3432B";
+  const radius = r.series.map((_, i) => i === r.series.length - 1 ? 6 : 0);
+  if (!chart) {
+    chart = new Chart($("chart"), {
+      type: "line",
+      data: { labels, datasets: [
+        { label: "What it is worth", data: val, borderColor: col, backgroundColor: col, borderWidth: 3, pointRadius: radius, pointHoverRadius: 5, tension: 0 },
+        { label: "What you have put in", data: inv, borderColor: "#13242C", backgroundColor: "#13242C", borderWidth: 1.5, borderDash: [3, 4], pointRadius: 0, stepped: true }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 18, boxHeight: 2, color: "#13242C", font: { size: 13 } } },
+          tooltip: { callbacks: { label: c => c.dataset.label + ": " + ngn(c.parsed.y) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: "#56666D", font: { size: 12 }, autoSkip: true, maxTicksLimit: 6, maxRotation: 0 } },
+          y: { beginAtZero: true, grid: { color: "#E3E9E7" }, border: { display: false }, ticks: { color: "#56666D", font: { size: 12 }, callback: v => ngnC(v) } }
+        }
+      }
+    });
+  } else {
+    chart.data.labels = labels;
+    Object.assign(chart.data.datasets[0], { data: val, borderColor: col, backgroundColor: col, pointRadius: radius });
+    chart.data.datasets[1].data = inv;
+    chart.update();
+  }
+}
+
+
+function renderReco(s, plan) {
+  const tot = st.wBear + st.wBase + st.wBull;
+  const pc = v => tot > 0 ? Math.round(v / tot * 100) + "%" : "0%";
+  $("wBearO").textContent = pc(st.wBear); $("wBaseO").textContent = pc(st.wBase); $("wBullO").textContent = pc(st.wBull);
+  $("hurdleO").textContent = pct(st.hurdle, 1);
+  $("oddsSum").textContent = tot === 0 ? "(set at least one above zero)" : (tot === 100 ? "" : "(scaled to 100%)");
+  if (tot === 0) return;
+  const rc = recommend(s, plan, { bear: st.wBear, base: st.wBase, bull: st.wBull });
+  const v = $("rVerdict");
+  v.textContent = rc.verdict; v.className = "reco-verdict " + rc.tone;
+  const per = plan.freq === "monthly" ? " a month" : plan.freq === "annual" ? " a year" : "";
+  $("rStake").textContent = rc.decision === "hold"
+    ? "Put in nothing at ₦525. Wait for a lower price, or for Q3 results that show margins holding up."
+    : rc.decision === "all"
+      ? "Put in the full " + ngn(plan.amount) + per + " you were planning."
+      : "Put in " + ngn(rc.stake) + " of the " + ngn(plan.amount) + per + " you were planning, and keep the other half back.";
+  $("rExp").textContent = pct(rc.exp) + " of your money" + (rc.expPa > -0.99 ? ", " + (rc.expPa >= 0 ? "+" : "") + pct(rc.expPa, 1) + " a year" : "");
+  $("rLoss").textContent = pct(rc.lossProb);
+  const beTxt = x => x.capped === "below" ? "under $4/bbl" : x.capped === "above" ? "over $40/bbl" : "$" + x.lr.toFixed(1) + "/bbl";
+  $("rBe").textContent = beTxt(rc.be);
+  $("rBe2").textContent = beTxt(rc.beDouble);
+  const why = [];
+  why.push((rc.decision === "hold" ? "" : "") + "Weighted across your odds, " + ngn(plan.amount * (plan.freq === "once" ? 1 : 1)) + per + " turns into " + pct(rc.exp) + " of what you put in over " + (plan.months % 12 === 0 ? (plan.months / 12) + (plan.months === 12 ? " year" : " years") : plan.months + " months") + ", against " + pct(Math.pow(1 + rc.hurdle, plan.months / 12)) + " if you took your " + pct(rc.hurdle, 1) + " elsewhere.");
+  why.push("On fundamental value, breaking even needs a long-run margin of " + beTxt(rc.be) + ". The accounts imply about $8.9 in 2025 and $27.5 in the H1 2026 boom, so this is the number to watch in the Q3 results.");
+  why.push(rc.bear <= 0.05
+    ? "The bear case is a write-off in this model: equity value goes to zero once debt is deducted. That is what caps the stake, however good the upside looks."
+    : "In the bear case you get back " + pct(rc.bear) + " of your money, and in the bull case " + pct(rc.bull) + ".");
+  if (plan.freq !== "once") why.push("Spreading the money out lowers your average cost to " + ngn(rc.cases[1].r.avgCost) + " a share in the base case, against ₦525 at the IPO, but only if the price actually falls toward fundamental value.");
+  if (rc.capped === "short") why.push("The numbers supported investing it all, but the answer is capped at half because you are selling within two years, and the first year after listing is price discovery rather than fundamentals.");
+  else if (plan.months < 24 && rc.decision !== "hold") why.push("Selling within two years means you are betting on price discovery rather than fundamentals.");
+  if (st.method === "premium") why.push("You have assumed buyers keep paying today's premium over fundamental value. That is the most generous basis here, so treat this recommendation as the optimistic end.");
+  $("rWhy").innerHTML = why.map(t => "<li>" + t + "</li>").join("");
+  $("rNote").textContent = "A rule applied to your own odds and assumptions, not advice. Change the odds and it changes.";
+}
+
+// events
+const num = v => parseInt(String(v).replace(/[^0-9]/g, ""), 10);
+$("amt").addEventListener("input", e => { const v = num(e.target.value); st.amount = isNaN(v) ? 0 : Math.min(v, 1e11); fit(e.target); render(); });
+$("amt").addEventListener("blur", () => { if (st.amount > 0) $("amt").value = st.amount.toLocaleString("en-NG"); fit($("amt")); });
+$("amt").addEventListener("focus", e => e.target.select());
+$("hz").addEventListener("input", e => { const v = num(e.target.value); st.hz = isNaN(v) ? 0 : v; fit(e.target); render(); });
+$("hz").addEventListener("focus", e => e.target.select());
+$("unit").addEventListener("change", e => {
+  const was = st.unit; st.unit = e.target.value;
+  if (was === "years" && st.unit === "months") st.hz = Math.min(120, st.hz * 12);
+  if (was === "months" && st.unit === "years") st.hz = Math.max(1, Math.min(10, Math.round(st.hz / 12)));
+  $("hz").value = st.hz; fit($("hz")); render();
+});
+$("freq").addEventListener("change", e => { st.freq = e.target.value; if (st.freq !== "once" && st.amount === 1000000) { st.amount = 100000; $("amt").value = "100,000"; fit($("amt")); } render(); });
+document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => { st.amount = +b.dataset.a; $("amt").value = st.amount.toLocaleString("en-NG"); fit($("amt")); render(); }));
+$("method").addEventListener("change", e => { st.method = e.target.value; render(); });
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { st.preset = b.dataset.p; st.p = { ...PRESETS[st.preset] }; st.custom = false; syncControls(); render(); }));
+$("lr").addEventListener("input", e => { st.p.lr = +e.target.value; st.custom = true; syncControls(); render(); });
+$("vol").addEventListener("input", e => { st.p.kb1 = VOL[st.volUnit].inv(+e.target.value); st.custom = true; syncControls(); render(); });
+$("volUnit").addEventListener("change", e => { st.volUnit = e.target.value; syncVol(); });
+$("exp").addEventListener("change", e => { st.p.exp = e.target.value; st.custom = true; syncControls(); render(); });
+["wBear", "wBase", "wBull", "hurdle"].forEach(id => $(id).addEventListener("input", e => { st[id] = +e.target.value; render(); }));
+["mult", "dep", "payout", "wacc"].forEach(id => $(id).addEventListener("input", e => { st[id] = +e.target.value; render(); }));
+$("reset").addEventListener("click", () => { Object.assign(st, DEF, { p: { ...PRESETS.base }, custom: false }); syncControls(); render(); });
+
+window.addEventListener("resize", fitSels);
+syncControls(); render();
+</script>
+</body>
+</html>
